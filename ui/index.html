@@ -1,0 +1,827 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TOTP</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: var(--font-sans, Inter, ui-sans-serif, system-ui, sans-serif);
+      }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        padding: 20px;
+        background: var(--color-background, Canvas);
+        color: var(--color-foreground, CanvasText);
+      }
+      main {
+        width: min(560px, 100%);
+        margin: 0 auto;
+        display: grid;
+        gap: 14px;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 700;
+      }
+      .count {
+        margin-left: 8px;
+        font-size: 13px;
+        font-weight: 500;
+        opacity: 0.55;
+      }
+      .list { display: grid; gap: 10px; }
+      .card, .import-card {
+        padding: 16px 18px;
+        border: 1px solid color-mix(in srgb, var(--color-foreground, CanvasText) 12%, transparent);
+        border-radius: var(--radius-lg, 16px);
+        background: color-mix(in srgb, var(--color-background, Canvas) 88%, transparent);
+      }
+      .issuer {
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--color-primary, #2563eb);
+      }
+      .account {
+        margin: 4px 0 0;
+        font-size: 13px;
+        opacity: 0.7;
+        word-break: break-all;
+      }
+      .code-row {
+        margin-top: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .code {
+        font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+        font-size: 28px;
+        font-weight: 700;
+        letter-spacing: 0.16em;
+        line-height: 1;
+      }
+      .code.warn { color: var(--color-destructive, #dc2626); }
+      .ring { width: 36px; height: 36px; flex: none; }
+      .ring circle { fill: none; stroke-width: 3.5; }
+      .ring .track {
+        stroke: color-mix(in srgb, var(--color-foreground, CanvasText) 12%, transparent);
+      }
+      .ring .value {
+        stroke: var(--color-primary, #2563eb);
+        stroke-linecap: round;
+        transform: rotate(-90deg);
+        transform-origin: 18px 18px;
+      }
+      .ring.warn .value { stroke: var(--color-destructive, #dc2626); }
+      .meta {
+        margin-top: 10px;
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        font-size: 12px;
+        opacity: 0.62;
+      }
+      .row-actions, .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+      button {
+        border: 0;
+        border-radius: var(--radius-md, 10px);
+        padding: 8px 12px;
+        background: var(--color-primary, #2563eb);
+        color: var(--color-primary-foreground, #fff);
+        font: inherit;
+        font-size: 13px;
+        font-weight: 650;
+        cursor: pointer;
+      }
+      button.secondary, button.ghost {
+        background: color-mix(in srgb, var(--color-foreground, CanvasText) 8%, transparent);
+        color: var(--color-foreground, CanvasText);
+      }
+      button.danger { color: var(--color-destructive, #dc2626); }
+      button:disabled { opacity: 0.55; cursor: wait; }
+      label.btn {
+        display: inline-block;
+        border-radius: var(--radius-md, 10px);
+        padding: 8px 12px;
+        background: color-mix(in srgb, var(--color-foreground, CanvasText) 8%, transparent);
+        color: var(--color-foreground, CanvasText);
+        font: inherit;
+        font-size: 13px;
+        font-weight: 650;
+        cursor: pointer;
+      }
+      textarea, input:not([type="radio"]):not([type="file"]):not([type="hidden"]) {
+        width: 100%;
+        border: 1px solid color-mix(in srgb, var(--color-foreground, CanvasText) 16%, transparent);
+        border-radius: var(--radius-md, 10px);
+        padding: 10px 12px;
+        background: transparent;
+        color: inherit;
+        font: inherit;
+        font-size: 13px;
+        outline: none;
+        box-shadow: none;
+        appearance: none;
+        -webkit-appearance: none;
+      }
+      textarea:focus,
+      input:not([type="radio"]):not([type="file"]):not([type="hidden"]):focus {
+        border-color: var(--color-primary, #2563eb);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary, #2563eb) 20%, transparent);
+      }
+      textarea {
+        min-height: 120px;
+        resize: vertical;
+      }
+      .radio-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .radio-group label {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 36px;
+        padding: 6px 10px;
+        border: 1px solid color-mix(in srgb, var(--color-foreground, CanvasText) 16%, transparent);
+        border-radius: var(--radius-md, 10px);
+        font-size: 13px;
+        font-weight: 650;
+        cursor: pointer;
+      }
+      .radio-group input {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        opacity: 0;
+        pointer-events: none;
+      }
+      .radio-group label:has(input:checked) {
+        border-color: var(--color-primary, #2563eb);
+        background: color-mix(in srgb, var(--color-primary, #2563eb) 14%, transparent);
+        color: var(--color-primary, #2563eb);
+      }
+      .radio-group label:has(input:focus-visible) {
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary, #2563eb) 20%, transparent);
+      }
+      .field {
+        display: grid;
+        gap: 6px;
+        margin-top: 10px;
+      }
+      .field span {
+        font-size: 12px;
+        font-weight: 650;
+        opacity: 0.72;
+      }
+      .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      .hint, .empty, .error, .ok {
+        margin: 0;
+        line-height: 1.6;
+        font-size: 13px;
+      }
+      .hint, .empty { opacity: 0.72; }
+      .error { color: var(--color-destructive, #dc2626); }
+      .ok { color: var(--color-primary, #2563eb); }
+      .hidden { display: none; }
+      .drop-active {
+        outline: 2px dashed var(--color-primary, #2563eb);
+        outline-offset: 2px;
+      }
+      .modal {
+        position: fixed;
+        inset: 0;
+        z-index: 50;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        background: color-mix(in srgb, #000 46%, transparent);
+      }
+      .modal.hidden { display: none; }
+      .modal-panel {
+        width: min(420px, 100%);
+        max-height: min(88vh, 640px);
+        overflow: auto;
+        padding: 18px;
+        border: 1px solid color-mix(in srgb, var(--color-foreground, CanvasText) 12%, transparent);
+        border-radius: var(--radius-lg, 16px);
+        background: var(--color-background, Canvas);
+        color: var(--color-foreground, CanvasText);
+        box-shadow: 0 18px 48px color-mix(in srgb, #000 28%, transparent);
+      }
+      .modal-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .modal-head h2 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 700;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1 id="title">验证器<span class="count" id="count"></span></h1>
+        <button type="button" id="toggle-import">导入</button>
+      </header>
+      <section class="import-card hidden" id="import-card">
+        <p class="hint" id="import-hint"></p>
+        <textarea id="import-text" spellcheck="false"></textarea>
+        <input id="qr-file" type="file" accept=".png,.jpg,.jpeg,.gif,.webp,.bmp" multiple hidden />
+        <p class="error hidden" id="import-error"></p>
+        <div class="actions" style="margin-top:10px">
+          <button type="button" id="do-import">导入</button>
+          <label class="btn" for="qr-file" id="pick-qr">选择二维码</label>
+          <button class="secondary" type="button" id="cancel-import">取消</button>
+        </div>
+      </section>
+      <p class="error hidden" id="page-error"></p>
+      <section class="list" id="list"></section>
+    </main>
+    <div class="modal hidden" id="edit-card" role="dialog" aria-modal="true" aria-labelledby="edit-title">
+      <section class="modal-panel" id="edit-panel">
+        <div class="modal-head">
+          <h2 id="edit-title">修改</h2>
+          <button class="ghost" type="button" id="cancel-edit">取消</button>
+        </div>
+        <input type="hidden" id="edit-id" />
+        <div class="field">
+          <span id="label-issuer">签发方</span>
+          <input id="edit-issuer" autocomplete="off" />
+        </div>
+        <div class="field">
+          <span id="label-account">账号</span>
+          <input id="edit-account" autocomplete="off" />
+        </div>
+        <div class="field">
+          <span id="label-algorithm">算法</span>
+          <div class="radio-group" role="radiogroup" aria-labelledby="label-algorithm">
+            <label><input type="radio" name="edit-algorithm" value="SHA1" />SHA1</label>
+            <label><input type="radio" name="edit-algorithm" value="SHA256" />SHA256</label>
+            <label><input type="radio" name="edit-algorithm" value="SHA512" />SHA512</label>
+          </div>
+        </div>
+        <div class="field">
+          <span id="label-digits">位数</span>
+          <div class="radio-group" role="radiogroup" aria-labelledby="label-digits">
+            <label><input type="radio" name="edit-digits" value="6" />6</label>
+            <label><input type="radio" name="edit-digits" value="8" />8</label>
+          </div>
+        </div>
+        <div class="field">
+          <span id="label-period">周期（秒）</span>
+          <input id="edit-period" type="number" min="1" max="300" />
+        </div>
+        <div class="field">
+          <span id="label-secret">密钥</span>
+          <input id="edit-secret" type="password" autocomplete="off" />
+          <p class="hint" id="secret-hint"></p>
+        </div>
+        <p class="error hidden" id="edit-error"></p>
+        <div class="actions" style="margin-top:10px">
+          <button type="button" id="do-edit">保存</button>
+          <button class="secondary" type="button" id="cancel-edit-footer">取消</button>
+        </div>
+      </section>
+    </div>
+    <script src="./jsQR.min.js"></script>
+    <script>
+      const copy = {
+        en: {
+          title: "Authenticator",
+          import: "Import",
+          importing: "Importing…",
+          cancel: "Cancel",
+          copy: "Copy",
+          copied: "Copied",
+          edit: "Edit",
+          save: "Save",
+          saving: "Saving…",
+          export: "Export",
+          exported: "Copied URI",
+          issuer: "Issuer",
+          account: "Account",
+          algorithm: "Algorithm",
+          digits: "Digits",
+          period: "Period (seconds)",
+          secret: "Secret",
+          secretHint: "Leave blank to keep the current secret.",
+          remove: "Delete",
+          confirm: "Confirm",
+          empty: "No accounts yet. Import a Google Authenticator export, otpauth URI, unencrypted backup JSON, or a QR image.",
+          hint: "Paste otpauth URI, Google Authenticator export, unencrypted Aegis/andOTP/2FAS/FreeOTP/Bitwarden JSON, a Base32 secret, or drop/paste a QR image.",
+          pickQr: "Choose QR image",
+          decoding: "Reading QR…",
+          qrFail: "Could not read a QR code from the image.",
+          remain: (n) => n + "s left",
+          waiting: "Connecting to DBX host…",
+          loading: "Loading codes…"
+        },
+        zh: {
+          title: "验证器",
+          import: "导入",
+          importing: "正在导入…",
+          cancel: "取消",
+          copy: "复制",
+          copied: "已复制",
+          edit: "修改",
+          save: "保存",
+          saving: "正在保存…",
+          export: "导出",
+          exported: "已复制 URI",
+          issuer: "签发方",
+          account: "账号",
+          algorithm: "算法",
+          digits: "位数",
+          period: "周期（秒）",
+          secret: "密钥",
+          secretHint: "留空则不修改当前密钥。",
+          remove: "删除",
+          confirm: "确认删除",
+          empty: "还没有账号。请导入 Google 导出码、otpauth URI、未加密备份 JSON，或二维码图片。",
+          hint: "可粘贴 otpauth URI、Google 导出码、未加密的 Aegis/andOTP/2FAS/FreeOTP/Bitwarden JSON、Base32 密钥，或选择/拖入/粘贴二维码图片。",
+          pickQr: "选择二维码",
+          decoding: "正在识别二维码…",
+          qrFail: "未能从图片中识别二维码。",
+          remain: (n) => "剩余 " + n + " 秒",
+          waiting: "正在连接 DBX 宿主…",
+          loading: "正在生成验证码…"
+        }
+      };
+
+      let text = copy.zh;
+      let accounts = [];
+      let fetchedAt = 0;
+      let inflight = false;
+      let pendingDelete = "";
+      let copiedId = "";
+      let exportedId = "";
+
+      function isZh() {
+        return String(window.dbxPlugin?.locale || navigator.language || "").toLowerCase().startsWith("zh");
+      }
+
+      function applyLocale() {
+        text = isZh() ? copy.zh : copy.en;
+        document.querySelector("#title").innerHTML = `${text.title}<span class="count" id="count">${countLabel()}</span>`;
+        document.querySelector("#toggle-import").textContent = text.import;
+        document.querySelector("#do-import").textContent = text.import;
+        document.querySelector("#pick-qr").textContent = text.pickQr;
+        document.querySelector("#cancel-import").textContent = text.cancel;
+        document.querySelector("#import-hint").textContent = text.hint;
+        document.querySelector("#import-text").placeholder = text.hint;
+        document.querySelector("#edit-title").textContent = text.edit;
+        document.querySelector("#label-issuer").textContent = text.issuer;
+        document.querySelector("#label-account").textContent = text.account;
+        document.querySelector("#label-algorithm").textContent = text.algorithm;
+        document.querySelector("#label-digits").textContent = text.digits;
+        document.querySelector("#label-period").textContent = text.period;
+        document.querySelector("#label-secret").textContent = text.secret;
+        document.querySelector("#secret-hint").textContent = text.secretHint;
+        document.querySelector("#do-edit").textContent = text.save;
+        document.querySelector("#cancel-edit").textContent = text.cancel;
+        document.querySelector("#cancel-edit-footer").textContent = text.cancel;
+      }
+
+      function countLabel() {
+        return accounts.length ? String(accounts.length) : "";
+      }
+
+      function remainingNow(item) {
+        const elapsed = Math.floor((Date.now() - fetchedAt) / 1000);
+        return Math.max(0, Number(item.remainingSecs) - elapsed);
+      }
+
+      function formatCode(code) {
+        const raw = String(code || "");
+        if (raw.length === 6) return raw.slice(0, 3) + " " + raw.slice(3);
+        if (raw.length === 8) return raw.slice(0, 4) + " " + raw.slice(4);
+        return raw;
+      }
+
+      function escapeHtml(value) {
+        return String(value)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;");
+      }
+
+      function render() {
+        const list = document.querySelector("#list");
+        const count = document.querySelector("#count");
+        const pageError = document.querySelector("#page-error");
+        if (count) count.textContent = countLabel();
+        if (!accounts.length) {
+          list.innerHTML = `<p class="empty">${escapeHtml(text.empty)}</p>`;
+          return;
+        }
+        pageError.classList.add("hidden");
+        list.innerHTML = accounts.map((item) => {
+          const remain = remainingNow(item);
+          const warn = remain <= 5 ? " warn" : "";
+          const offset = 100 - Math.round((remain / Number(item.period || 30)) * 100);
+          const issuer = item.issuer || item.name || "TOTP";
+          const removeLabel = pendingDelete === item.id ? text.confirm : text.remove;
+          const copyLabel = copiedId === item.id ? text.copied : text.copy;
+          const exportLabel = exportedId === item.id ? text.exported : text.export;
+          return `
+            <article class="card" data-id="${escapeHtml(item.id)}">
+              <div class="issuer">${escapeHtml(issuer)}</div>
+              <p class="account">${escapeHtml(item.account || "")}</p>
+              <div class="code-row">
+                <div class="code${warn}">${escapeHtml(formatCode(item.code))}</div>
+                <svg class="ring${warn}" viewBox="0 0 36 36" aria-hidden="true">
+                  <circle class="track" cx="18" cy="18" r="16"></circle>
+                  <circle class="value" cx="18" cy="18" r="16" stroke-dasharray="100" stroke-dashoffset="${offset}"></circle>
+                </svg>
+              </div>
+              <div class="meta">
+                <span>${escapeHtml(item.algorithm || "SHA1")} · ${Number(item.digits) || 6}</span>
+                <span data-remain>${text.remain(remain)}</span>
+              </div>
+              <div class="row-actions" style="margin-top:12px">
+                <button type="button" data-action="copy" data-id="${escapeHtml(item.id)}">${copyLabel}</button>
+                <button class="secondary" type="button" data-action="edit" data-id="${escapeHtml(item.id)}">${text.edit}</button>
+                <button class="secondary" type="button" data-action="export" data-id="${escapeHtml(item.id)}">${exportLabel}</button>
+                <button class="ghost danger" type="button" data-action="remove" data-id="${escapeHtml(item.id)}">${removeLabel}</button>
+              </div>
+            </article>
+          `;
+        }).join("");
+      }
+
+      function tick() {
+        if (!accounts.length) return;
+        if (accounts.some((item) => remainingNow(item) <= 0)) {
+          refresh();
+          return;
+        }
+        document.querySelectorAll(".card").forEach((card, index) => {
+          const item = accounts[index];
+          if (!item) return;
+          const remain = remainingNow(item);
+          const remainNode = card.querySelector("[data-remain]");
+          const codeNode = card.querySelector(".code");
+          const ring = card.querySelector(".ring");
+          const value = card.querySelector(".ring .value");
+          if (remainNode) remainNode.textContent = text.remain(remain);
+          if (codeNode) codeNode.classList.toggle("warn", remain <= 5);
+          if (ring) ring.classList.toggle("warn", remain <= 5);
+          if (value) value.setAttribute("stroke-dashoffset", String(100 - Math.round((remain / Number(item.period || 30)) * 100)));
+        });
+      }
+
+      async function refresh() {
+        if (inflight || !window.dbxPlugin) return;
+        inflight = true;
+        try {
+          const result = await window.dbxPlugin.invoke("totp/current", {}, { timeoutMs: 10000 });
+          accounts = Array.isArray(result?.accounts) ? result.accounts : [];
+          fetchedAt = Date.now();
+          render();
+        } catch (error) {
+          const pageError = document.querySelector("#page-error");
+          pageError.textContent = error.message || String(error);
+          pageError.classList.remove("hidden");
+        } finally {
+          inflight = false;
+        }
+      }
+
+      function imageFilesFrom(list) {
+        return [...(list || [])].filter((file) => file && (String(file.type || "").startsWith("image/") || /\.(png|jpe?g|gif|webp|bmp)$/i.test(file.name || "")));
+      }
+
+      function loadImage(file) {
+        return new Promise((resolve, reject) => {
+          const url = URL.createObjectURL(file);
+          const img = new Image();
+          img.onload = () => {
+            URL.revokeObjectURL(url);
+            resolve(img);
+          };
+          img.onerror = () => {
+            URL.revokeObjectURL(url);
+            reject(new Error(text.qrFail));
+          };
+          img.src = url;
+        });
+      }
+
+      function decodeQrFromImage(img) {
+        const width = img.naturalWidth || img.width;
+        const height = img.naturalHeight || img.height;
+        if (!width || !height || typeof jsQR !== "function") return "";
+        const scales = [1];
+        if (Math.max(width, height) < 500) scales.push(2);
+        if (Math.max(width, height) > 1600) scales.push(1200 / Math.max(width, height));
+        for (const scale of scales) {
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.max(1, Math.round(width * scale));
+          canvas.height = Math.max(1, Math.round(height * scale));
+          const ctx = canvas.getContext("2d", { willReadFrequently: true });
+          ctx.imageSmoothingEnabled = scale < 1;
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const result = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "attemptBoth" });
+          if (result?.data) return String(result.data).trim();
+        }
+        return "";
+      }
+
+      async function importFromImages(files) {
+        const errorNode = document.querySelector("#import-error");
+        const textarea = document.querySelector("#import-text");
+        const button = document.querySelector("#do-import");
+        errorNode.classList.add("hidden");
+        if (!files.length) return;
+        document.querySelector("#edit-card").classList.add("hidden");
+        document.querySelector("#import-card").classList.remove("hidden");
+        button.disabled = true;
+        button.textContent = text.decoding;
+        try {
+          const decoded = [];
+          for (const file of files) {
+            const payload = decodeQrFromImage(await loadImage(file));
+            if (payload) decoded.push(payload);
+          }
+          if (!decoded.length) throw new Error(text.qrFail);
+          textarea.value = decoded.join("\n");
+          await importAccounts();
+        } catch (error) {
+          errorNode.textContent = error.message || String(error);
+          errorNode.classList.remove("hidden");
+        } finally {
+          button.disabled = false;
+          button.textContent = text.import;
+        }
+      }
+
+      async function importAccounts() {
+        const textarea = document.querySelector("#import-text");
+        const errorNode = document.querySelector("#import-error");
+        const button = document.querySelector("#do-import");
+        const raw = textarea.value;
+        errorNode.classList.add("hidden");
+        button.disabled = true;
+        button.textContent = text.importing;
+        try {
+          const result = await window.dbxPlugin.invoke("totp/import", { text: raw }, { timeoutMs: 15000 });
+          if (!result?.success) {
+            throw new Error(result?.message || text.empty);
+          }
+          textarea.value = "";
+          document.querySelector("#import-card").classList.add("hidden");
+          pendingDelete = "";
+          await refresh();
+        } catch (error) {
+          errorNode.textContent = error.message || String(error);
+          errorNode.classList.remove("hidden");
+        } finally {
+          button.disabled = false;
+          button.textContent = text.import;
+        }
+      }
+
+      function setRadio(name, value) {
+        const nodes = document.querySelectorAll(`input[name="${name}"]`);
+        let matched = false;
+        for (const node of nodes) {
+          node.checked = node.value === String(value);
+          if (node.checked) matched = true;
+        }
+        if (!matched && nodes[0]) nodes[0].checked = true;
+      }
+
+      function getRadio(name) {
+        return document.querySelector(`input[name="${name}"]:checked`)?.value || "";
+      }
+
+      function closePanels() {
+        document.querySelector("#import-card").classList.add("hidden");
+        document.querySelector("#edit-card").classList.add("hidden");
+        document.querySelector("#import-text").value = "";
+        document.querySelector("#edit-secret").value = "";
+        document.querySelector("#edit-error").classList.add("hidden");
+        document.querySelector("#import-error").classList.add("hidden");
+      }
+
+      function openEdit(id) {
+        const item = accounts.find((entry) => String(entry.id) === String(id));
+        if (!item) return;
+        document.querySelector("#import-card").classList.add("hidden");
+        const card = document.querySelector("#edit-card");
+        card.classList.remove("hidden");
+        document.querySelector("#edit-id").value = item.id;
+        document.querySelector("#edit-issuer").value = item.issuer || "";
+        document.querySelector("#edit-account").value = item.account || "";
+        setRadio("edit-algorithm", item.algorithm || "SHA1");
+        setRadio("edit-digits", String(item.digits || 6));
+        document.querySelector("#edit-period").value = String(item.period || 30);
+        document.querySelector("#edit-secret").value = "";
+        document.querySelector("#edit-error").classList.add("hidden");
+        document.querySelector("#edit-issuer").focus();
+      }
+
+      async function saveEdit() {
+        const button = document.querySelector("#do-edit");
+        const errorNode = document.querySelector("#edit-error");
+        errorNode.classList.add("hidden");
+        button.disabled = true;
+        button.textContent = text.saving;
+        try {
+          const result = await window.dbxPlugin.invoke("totp/update", {
+            id: document.querySelector("#edit-id").value,
+            issuer: document.querySelector("#edit-issuer").value,
+            account: document.querySelector("#edit-account").value,
+            algorithm: getRadio("edit-algorithm") || "SHA1",
+            digits: Number(getRadio("edit-digits") || 6),
+            period: Number(document.querySelector("#edit-period").value),
+            secret: document.querySelector("#edit-secret").value
+          }, { timeoutMs: 10000 });
+          if (!result?.success) {
+            throw new Error(result?.message || text.save);
+          }
+          closePanels();
+          await refresh();
+        } catch (error) {
+          errorNode.textContent = error.message || String(error);
+          errorNode.classList.remove("hidden");
+        } finally {
+          button.disabled = false;
+          button.textContent = text.save;
+        }
+      }
+
+      async function exportAccount(id) {
+        const pageError = document.querySelector("#page-error");
+        try {
+          const result = await window.dbxPlugin.invoke("totp/export", { id }, { timeoutMs: 10000 });
+          const uri = String(result?.text || "");
+          if (!uri) throw new Error(result?.message || text.export);
+          await navigator.clipboard.writeText(uri);
+          exportedId = id;
+          copiedId = "";
+          pageError.classList.add("hidden");
+          render();
+          setTimeout(() => {
+            if (exportedId === id) {
+              exportedId = "";
+              render();
+            }
+          }, 1200);
+        } catch (error) {
+          pageError.textContent = error.message || String(error);
+          pageError.classList.remove("hidden");
+        }
+      }
+
+      async function copyCode(id) {
+        const item = accounts.find((entry) => entry.id === id);
+        if (!item?.code) return;
+        await navigator.clipboard.writeText(String(item.code));
+        copiedId = id;
+        exportedId = "";
+        render();
+        setTimeout(() => {
+          if (copiedId === id) {
+            copiedId = "";
+            render();
+          }
+        }, 1200);
+      }
+
+      async function removeAccount(id) {
+        if (pendingDelete !== id) {
+          pendingDelete = id;
+          render();
+          return;
+        }
+        pendingDelete = "";
+        await window.dbxPlugin.invoke("totp/remove", { id }, { timeoutMs: 10000 });
+        await refresh();
+      }
+
+      document.addEventListener("click", (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) return;
+        const actionNode = target.closest("[data-action]");
+        if (target.id === "toggle-import") {
+          const card = document.querySelector("#import-card");
+          const hidden = card.classList.contains("hidden");
+          closePanels();
+          if (hidden) card.classList.remove("hidden");
+          return;
+        }
+        if (target.id === "cancel-import" || target.id === "cancel-edit" || target.id === "cancel-edit-footer" || target.id === "edit-card") {
+          closePanels();
+          return;
+        }
+        if (target.id === "do-import") {
+          importAccounts();
+          return;
+        }
+        if (target.id === "do-edit") {
+          saveEdit();
+          return;
+        }
+        const action = actionNode?.dataset.action;
+        const id = actionNode?.dataset.id;
+        if (action === "copy") copyCode(id);
+        if (action === "edit") openEdit(id);
+        if (action === "export") exportAccount(id);
+        if (action === "remove") removeAccount(id);
+        if (action !== "remove") pendingDelete = "";
+      });
+
+      document.querySelector("#qr-file").addEventListener("change", async (event) => {
+        const input = event.target;
+        const files = imageFilesFrom(input.files || []);
+        input.value = "";
+        await importFromImages(files);
+      });
+
+      window.addEventListener("dragover", (event) => {
+        if (![...event.dataTransfer.items].some((item) => item.kind === "file")) return;
+        event.preventDefault();
+        document.querySelector("#edit-card").classList.add("hidden");
+        document.querySelector("#import-card").classList.remove("hidden");
+        document.querySelector("#import-card").classList.add("drop-active");
+      });
+      window.addEventListener("dragleave", (event) => {
+        if (event.relatedTarget) return;
+        document.querySelector("#import-card").classList.remove("drop-active");
+      });
+      window.addEventListener("drop", async (event) => {
+        const files = imageFilesFrom(event.dataTransfer.files || []);
+        document.querySelector("#import-card").classList.remove("drop-active");
+        if (!files.length) return;
+        event.preventDefault();
+        await importFromImages(files);
+      });
+      window.addEventListener("keydown", (event) => {
+        if (event.key !== "Escape") return;
+        if (document.querySelector("#edit-card").classList.contains("hidden") &&
+            document.querySelector("#import-card").classList.contains("hidden")) return;
+        closePanels();
+      });
+
+      window.addEventListener("paste", async (event) => {
+        if (!document.querySelector("#edit-card").classList.contains("hidden")) return;
+        const files = imageFilesFrom(event.clipboardData?.files || []);
+        if (!files.length && event.clipboardData?.items) {
+          for (const item of event.clipboardData.items) {
+            if (item.type.startsWith("image/")) {
+              const file = item.getAsFile();
+              if (file) files.push(file);
+            }
+          }
+        }
+        if (!files.length) return;
+        event.preventDefault();
+        await importFromImages(files);
+      });
+
+      window.addEventListener("dbx-plugin-env", () => {
+        applyLocale();
+        render();
+      });
+
+      applyLocale();
+      document.querySelector("#list").innerHTML = `<p class="empty">${text.waiting}</p>`;
+      window.dbxPlugin.ready.then(async () => {
+        applyLocale();
+        document.querySelector("#list").innerHTML = `<p class="empty">${text.loading}</p>`;
+        await refresh();
+        window.setInterval(tick, 250);
+      });
+    </script>
+  </body>
+</html>
