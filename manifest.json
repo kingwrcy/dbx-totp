@@ -10,7 +10,7 @@
   "source": "https://github.com/kingwrcy/dbx-totp",
   "homepage": "https://github.com/kingwrcy/dbx-totp",
   "engines": {
-    "dbx": ">=0.5.68",
+    "dbx": ">=0.6.21",
     "host_api": "1"
   },
   "entrypoints": {
@@ -29,6 +29,39 @@
       "label": "Authenticator",
       "description": "Import TOTP accounts and show one-time codes.",
       "icon": "assets/plugin.svg"
+    },
+    {
+      "type": "command",
+      "id": "totp.open",
+      "label": "TOTP Authenticator",
+      "description": "Open TOTP codes in the bottom dock.",
+      "icon": "assets/plugin.svg",
+      "action": {
+        "type": "open-workbench",
+        "workbench": "totp.workbench",
+        "presentation": "panel",
+        "reuse": "singleton",
+        "restore": "none"
+      }
+    },
+    {
+      "type": "menus",
+      "id": "totp.menus",
+      "items": [
+        {
+          "location": "appToolbar",
+          "command": "totp.open",
+          "group": "secondary",
+          "order": 100,
+          "default_visible": true
+        },
+        {
+          "location": "commandPalette",
+          "command": "totp.open",
+          "group": "secondary",
+          "order": 100
+        }
+      ]
     }
   ],
   "localizations": {
@@ -39,6 +72,10 @@
         "totp.workbench": {
           "label": "验证器",
           "description": "导入 TOTP 账号并显示动态验证码。"
+        },
+        "totp.open": {
+          "label": "TOTP 验证器",
+          "description": "在底部 Dock 中查看和复制动态验证码。"
         }
       }
     }

@@ -42,6 +42,50 @@
         opacity: 0.55;
       }
       .list { display: grid; gap: 10px; }
+      body[data-surface="panel"] { padding: 12px 16px; }
+      body[data-surface="panel"] main { width: 100%; gap: 10px; }
+      body[data-surface="panel"] .list {
+        grid-template-columns: minmax(0, 1fr);
+        align-items: start;
+      }
+      body[data-surface="panel"] .card { padding: 12px 14px; }
+      body[data-surface="panel"] .import-card { width: min(560px, 100%); }
+      body[data-surface="panel"] .empty { grid-column: 1 / -1; }
+      @media (min-width: 560px) {
+        body[data-surface="panel"] .card {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
+          grid-template-areas: "issuer code" "account code" "meta actions";
+          column-gap: 20px;
+          row-gap: 4px;
+          align-items: center;
+        }
+        body[data-surface="panel"] .issuer {
+          grid-area: issuer;
+          overflow-wrap: anywhere;
+        }
+        body[data-surface="panel"] .account { grid-area: account; margin: 0; }
+        body[data-surface="panel"] .code-row { grid-area: code; margin: 0; }
+        body[data-surface="panel"] .code { font-size: 24px; white-space: nowrap; }
+        body[data-surface="panel"] .meta {
+          grid-area: meta;
+          flex-direction: column;
+          gap: 4px;
+          margin: 0;
+        }
+        body[data-surface="panel"] .row-actions {
+          grid-area: actions;
+          justify-content: flex-end;
+          margin-top: 8px;
+        }
+      }
+      @media (min-width: 960px) {
+        body[data-surface="panel"] .card {
+          grid-template-columns: minmax(0, 1fr) 228px 100px auto;
+          grid-template-areas: "issuer code meta actions" "account code meta actions";
+        }
+        body[data-surface="panel"] .row-actions { margin-top: 0; }
+      }
       .card, .import-card {
         padding: 16px 18px;
         border: 1px solid color-mix(in srgb, var(--color-foreground, CanvasText) 12%, transparent);
@@ -97,6 +141,7 @@
         opacity: 0.62;
       }
       .row-actions, .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+      .row-actions { margin-top: 12px; }
       button {
         border: 0;
         border-radius: var(--radius-md, 10px);
@@ -387,6 +432,10 @@
         return String(window.dbxPlugin?.locale || navigator.language || "").toLowerCase().startsWith("zh");
       }
 
+      function applySurface(context) {
+        document.body.dataset.surface = context?.surface === "panel" ? "panel" : "tab";
+      }
+
       function applyLocale() {
         text = isZh() ? copy.zh : copy.en;
         document.querySelector("#title").innerHTML = `${text.title}<span class="count" id="count">${countLabel()}</span>`;
@@ -466,7 +515,7 @@
                 <span>${escapeHtml(item.algorithm || "SHA1")} · ${Number(item.digits) || 6}</span>
                 <span data-remain>${text.remain(remain)}</span>
               </div>
-              <div class="row-actions" style="margin-top:12px">
+              <div class="row-actions">
                 <button type="button" data-action="copy" data-id="${escapeHtml(item.id)}">${copyLabel}</button>
                 <button class="secondary" type="button" data-action="edit" data-id="${escapeHtml(item.id)}">${text.edit}</button>
                 <button class="secondary" type="button" data-action="export" data-id="${escapeHtml(item.id)}">${exportLabel}</button>
@@ -817,6 +866,8 @@
       applyLocale();
       document.querySelector("#list").innerHTML = `<p class="empty">${text.waiting}</p>`;
       window.dbxPlugin.ready.then(async () => {
+        applySurface(window.dbxPlugin.context);
+        window.dbxPlugin.onContext(applySurface);
         applyLocale();
         document.querySelector("#list").innerHTML = `<p class="empty">${text.loading}</p>`;
         await refresh();
