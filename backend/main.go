@@ -286,7 +286,7 @@ func invalidParams(message string) *dbxpluginsdk.PluginError {
 func main() {
 	metadata := dbxpluginsdk.Metadata{
 		ID:           "io.github.kingwrcy.totp",
-		Version:      "0.2.0",
+		Version:      "0.2.1",
 		Capabilities: []string{},
 	}
 	server := dbxpluginsdk.NewServer(metadata, newPluginWithPath(vaultPath()))

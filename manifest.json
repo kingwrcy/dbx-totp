@@ -3,7 +3,7 @@
   "manifest_version": 1,
   "id": "io.github.kingwrcy.totp",
   "name": "TOTP",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "publisher": "kingwrcy",
   "description": "在 DBX 中管理 TOTP 账号并生成动态验证码。",
   "icon": "assets/plugin.svg",

@@ -7,12 +7,12 @@
   "source": "https://github.com/kingwrcy/dbx-totp",
   "homepage": "https://github.com/kingwrcy/dbx-totp",
   "license": "Apache-2.0",
-  "releaseNotes": "Initial release: import TOTP accounts, show codes, copy and delete.",
+  "releaseNotes": "v0.2.1: Add a shield-and-clock icon, toolbar and command palette entries, and a compact horizontal bottom dock layout. Requires DBX 0.6.21 or later.",
   "localizations": {
     "zh-CN": {
       "name": "TOTP",
       "description": "在 DBX 中管理 TOTP 账号并生成动态验证码。",
-      "releaseNotes": "首次发布：导入 TOTP 账号，显示动态验证码，支持复制和删除。"
+      "releaseNotes": "v0.2.1：新增盾牌时钟图标、工具栏和命令面板入口，底部 Dock 改为横向紧凑布局。需要 DBX 0.6.21 或更高版本。"
     }
   }
 }
