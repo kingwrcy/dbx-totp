@@ -283,13 +283,16 @@ func invalidParams(message string) *dbxpluginsdk.PluginError {
 	return dbxpluginsdk.NewError(-32602, message)
 }
 
-func main() {
-	metadata := dbxpluginsdk.Metadata{
+func pluginMetadata() dbxpluginsdk.Metadata {
+	return dbxpluginsdk.Metadata{
 		ID:           "io.github.kingwrcy.totp",
-		Version:      "0.2.1",
+		Version:      "0.2.3",
 		Capabilities: []string{},
 	}
-	server := dbxpluginsdk.NewServer(metadata, newPluginWithPath(vaultPath()))
+}
+
+func main() {
+	server := dbxpluginsdk.NewServer(pluginMetadata(), newPluginWithPath(vaultPath()))
 	if err := server.Serve(); err != nil {
 		log.Fatal(err)
 	}

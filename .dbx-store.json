@@ -7,7 +7,7 @@
   "source": "https://github.com/kingwrcy/dbx-totp",
   "homepage": "https://github.com/kingwrcy/dbx-totp",
   "license": "Apache-2.0",
-  "releaseNotes": "v0.2.2：修复商店元数据格式，恢复自动同步流程。包含盾牌时钟图标、工具栏和命令面板入口，以及底部 Dock 横向紧凑布局。需要 DBX 0.6.21 或更高版本。",
+  "releaseNotes": "v0.2.3：修复后端与清单版本不一致导致的安装失败，并将验证器列表调整为居中紧凑布局。需要 DBX 0.6.21 或更高版本。",
   "localizations": {
     "zh-CN": {
       "name": "TOTP",

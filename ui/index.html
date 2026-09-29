@@ -43,7 +43,7 @@
       }
       .list { display: grid; gap: 10px; }
       body[data-surface="panel"] { padding: 12px 16px; }
-      body[data-surface="panel"] main { width: 100%; gap: 10px; }
+      body[data-surface="panel"] main { width: min(960px, 100%); gap: 10px; }
       body[data-surface="panel"] .list {
         grid-template-columns: minmax(0, 1fr);
         align-items: start;
